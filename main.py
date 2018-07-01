@@ -25,60 +25,71 @@ class Gauntlet(object):
                      user_agent='Infinity Gauntlet test app v0.1',
                      username=self.config['PARAMETERS']['Username'])
 
-    def getUsersFromSubreddit(self):
+    def getUsersFromSubreddit(self,subredditName):
         #TODO:  This assumes just one subreddit, which is set in the settings.ini file
         #Consider changing this to pull from all of the top subreddits.
-        users = []  
-        for submission in self.reddit.subreddit(self.config['PARAMETERS']['Subreddit']).new(limit=2048):
-            if(hasattr(submission.author,'name')):#Ensures the submission author actually has a name.  Otherwise this would fail if the user has deleted their account.
-                users.append(submission.author.name)
-            for user in self.getUsersFromSubmission(submission):
-                users.append(user)
-        users = tuple(users)
-        users = list(set(users))
+        users = [] 
+        i = 1
+        for submission in self.reddit.subreddit(subredditName).new(limit=1000):
+            users = self.addUserToVictimList(submission,users)
+            self.getUsersFromSubmission(submission,users)
+            print(repr(i) + " submissions parsed.  " + repr(len(users)) + " unique users found")
+            i += 1
+        for submission in self.reddit.subreddit(subredditName).top(limit=1000):
+            users = self.addUserToVictimList(submission,users)
+            self.getUsersFromSubmission(submission,users)
+            print(repr(i) + " submissions parsed.  " + repr(len(users)) + " unique users found")
+            i += 1
+        self.writeOutVictims(users,subredditName + ".txt")
         return users
 
-    def getUsersFromSubmission(self,submissionID):
-        users = []
-        for TLC in submissionID.comments:
-            if(hasattr(TLC,'author')):
-                if(hasattr(TLC.author,'name')):
-                    users.append(TLC.author.name)
-            if(hasattr(TLC,'replies')):
-                for user in self.getUsersFromCommentForest(TLC.replies):
-                    users.append(user)
+    def addUserToVictimList(self, id,users):
+        if(hasattr(id,'author')):
+            if(hasattr(id.author,'name')):
+                if(id.author.name not in users):
+                    users.append(id.author.name)
         return users
-    def getUsersFromCommentForest(self,forest):
-        users = []
+
+    def getUsersFromSubmission(self,submissionID,users):
+        for TLC in submissionID.comments:
+            self.addUserToVictimList(TLC,users)
+            if(hasattr(TLC,'replies')):
+                users = self.getUsersFromCommentForest(TLC.replies,users)
+        return users
+
+    def getUsersFromCommentForest(self,forest,users):
         forest.replace_more(limit=None)
         for comment in forest.list():
-            if(hasattr(comment,'author')):
-                if(hasattr(comment.author,'name')):
-                    users.append(comment.author.name)
+            users = self.addUserToVictimList(comment,users)
         return users
 
-    def writeOutVictims(self,usernamelist):
-        with(open('victims.txt','w')) as File:
+    def writeOutVictims(self,usernamelist, filename):
+        with(open(filename,'w')) as File:
              for user in usernamelist:
                  File.write(user)
                  File.write('\n')
-    def readInVictims(self):
-        with(open('victims.txt','r')) as File:
+    def readInVictims(self,filename):
+        with(open(filename,'r')) as File:
             content = File.readlines()
             content = [x.strip() for x in content] 
         return content
+
     def Snap(self,subreddit,user_list):
         #TODO:  Save out a list of people who have avoided the purge so this can be done incrementally.
         for user in user_list:
             #50% chance of ban for anyone on the list
             if(random.uniform(0, 1) < 0.5):
-                self.reddit.subreddit(subreddit).banned.add(user, ban_reason=self.config['PARAMETERS']['Message'])
+                #self.reddit.subreddit(subreddit).banned.add(user, ban_reason=self.config['PARAMETERS']['Message'])
+                print(user + " Was banned")
                 time.sleep(1)#Reddit API rate limit, 1 user per second
+            else:
+                print(user + " was not banned")
+
  
 def main():    
     ThanosRightHand = Gauntlet()
     ThanosRightHand.getAuthToken()
-    users = ThanosRightHand.getUsersFromSubreddit()
+    users = ThanosRightHand.getUsersFromSubreddit(ThanosRightHand.config['PARAMETERS']['subreddit'])
     ThanosRightHand.writeOutVictims(users)
     print(len(users))
     #When you're ready to commence banning, uncomment these lines.
