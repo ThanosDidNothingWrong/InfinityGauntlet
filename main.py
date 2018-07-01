@@ -7,12 +7,16 @@ import configparser
 import random
 
 class Gauntlet(object):
+    """Interface for mass-banning half the participating users in a subreddit."""
+
     def __init__(self, *args, **kwargs):
         self.config = configparser.ConfigParser()
         self.config.read('settings.ini')
         return super(Gauntlet, self).__init__(*args, **kwargs)
 
     def getAuthToken(self):
+        #If this is failing, you need to register your app, and update settings.ini.
+        #Always be sure to never commit a copy of settings.ini with your actual password.  
         session = Session()
         self.reddit = praw.Reddit(client_id=self.config['PARAMETERS']['Client_ID'],
                      client_secret=self.config['PARAMETERS']['secret'],
@@ -20,12 +24,13 @@ class Gauntlet(object):
                      requestor_kwargs={'session': session},  # pass Session
                      user_agent='Infinity Gauntlet test app v0.1',
                      username=self.config['PARAMETERS']['Username'])
-        test = ""
 
     def getUsersFromSubreddit(self):
+        #TODO:  This assumes just one subreddit, which is set in the settings.ini file
+        #Consider changing this to pull from all of the top subreddits.
         users = []  
         for submission in self.reddit.subreddit(self.config['PARAMETERS']['Subreddit']).new(limit=2048):
-            if(hasattr(submission.author,'name')):
+            if(hasattr(submission.author,'name')):#Ensures the submission author actually has a name.  Otherwise this would fail if the user has deleted their account.
                 users.append(submission.author.name)
             for user in self.getUsersFromSubmission(submission):
                 users.append(user)
@@ -63,6 +68,7 @@ class Gauntlet(object):
             content = [x.strip() for x in content] 
         return content
     def Snap(self,subreddit,user_list):
+        #TODO:  Save out a list of people who have avoided the purge so this can be done incrementally.
         for user in user_list:
             #50% chance of ban for anyone on the list
             if(random.uniform(0, 1) < 0.5):
