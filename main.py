@@ -30,6 +30,11 @@ class Gauntlet(object):
         #Consider changing this to pull from all of the top subreddits.
         users = [] 
         i = 1
+        for submission in self.reddit.subreddit(subredditName).hot(limit=1000):
+            users = self.addUserToVictimList(submission,users)
+            self.getUsersFromSubmission(submission,users)
+            print(repr(i) + " submissions parsed.  " + repr(len(users)) + " unique users found")
+            i += 1
         for submission in self.reddit.subreddit(subredditName).new(limit=1000):
             users = self.addUserToVictimList(submission,users)
             self.getUsersFromSubmission(submission,users)
@@ -74,30 +79,37 @@ class Gauntlet(object):
             content = [x.strip() for x in content] 
         return content
 
-    def Snap(self,subreddit,user_list):
+    def Snap(self,banSubreddit,inviteSubreddit,user_list):
         #TODO:  Save out a list of people who have avoided the purge so this can be done incrementally.
-        for user in user_list:
-            #50% chance of ban for anyone on the list
-            if(random.uniform(0, 1) < 0.5):
-                #self.reddit.subreddit(subreddit).banned.add(user, ban_reason=self.config['PARAMETERS']['Message'])
-                print(user + " Was banned")
-                time.sleep(1)#Reddit API rate limit, 1 user per second
-            else:
-                print(user + " was not banned")
+        banMessage = "Rejoice!  The snap has occurred, and you have been purged."
+        inviteMessage = "Rejoice!  The snap has occurred, and you have survived.  Join us, brother."
+        with open("Banned.txt",'w') as banFile:
+            with open("saved.txt",'w') as saveFile:
+                for user in user_list:
+                    #50% chance of ban for anyone on the list
+                    if(random.uniform(0, 1) < 0.5):
+                        self.reddit.subreddit(banSubreddit).banned.add(user, ban_reason=banMessage)
+                        print(user + " Was banned")
+                        banFile.write(user)
+                        banFile.write('\n')
+                    else:
+                        print(user + " was not banned")
+                        saveFile.write(user)
+                        saveFile.write('\n')
+                    time.sleep(1)#Reddit API rate limit, 1 user per second
 
  
 def main():    
     ThanosRightHand = Gauntlet()
     ThanosRightHand.getAuthToken()
-    users = ThanosRightHand.getUsersFromSubreddit(ThanosRightHand.config['PARAMETERS']['subreddit'])
-    ThanosRightHand.writeOutVictims(users)
-    print(len(users))
+    #users = ThanosRightHand.getUsersFromSubreddit(ThanosRightHand.config['PARAMETERS']['subreddit'])
     #When you're ready to commence banning, uncomment these lines.
-    #users = ThanosRightHand.readInVictims()
-    #ThanosRightHand.Snap(subreddit,users)
+    saved = ThanosRightHand.readInVictims("saved.txt")
+    users = ThanosRightHand.readInVictims("thanosdidnothingwrong.txt")
+    #for user in users:
+    #    print(user)
+    ThanosRightHand.Snap("thanosdidnothingwrong","the_snap",users)
     pass
 
 if __name__ == "__main__":
     main()
-
-    
