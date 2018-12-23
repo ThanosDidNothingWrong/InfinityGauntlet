@@ -5,7 +5,40 @@ from requests import Session
 import time
 import configparser
 import random
+from apiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
+from httplib2 import Http
 
+class RedditApi(object):
+    def __init__(self, *args, **kwargs):
+        self.config = configparser.ConfigParser()
+        self.config.read('settings.ini')
+        return super(RedditApi, self).__init__(*args, **kwargs)
+    def getAuthToken(self):
+        #If this is failing, you need to register your app, and update settings.ini.
+        #Always be sure to never commit a copy of settings.ini with your actual password.  
+        session = Session()
+        self.reddit = praw.Reddit(client_id=self.config['PARAMETERS']['Client_ID'],
+                     client_secret=self.config['PARAMETERS']['secret'],
+                     password=self.config['PARAMETERS']['Password'],
+                     requestor_kwargs={'session': session},  # pass Session
+                     user_agent='Infinity Gauntlet test app v0.1',
+                     username=self.config['PARAMETERS']['Username'])
+
+class hangoutsApi(object):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def getAuthToken(self):
+        scopes = 'https://www.googleapis.com/auth/chat.bot'
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(
+        'C:\InfinityGauntlet\KittenGauntlet-cf220c9d0cd5.json', scopes)
+        chat = build('chat', 'v1', http=credentials.authorize(Http()))
+        resp = chat.spaces().messages().create(
+        parent='spaces/AAAA2CiqVDM',
+        body={'text': 'Test message'}).execute()
+        print(resp)
 class Gauntlet(object):
     """Interface for mass-banning half the participating users in a subreddit."""
 
